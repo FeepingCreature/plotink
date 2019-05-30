@@ -31,7 +31,18 @@
 # SOFTWARE.
 
 import math
-import ebb_serial
+import os
+# import ebb_serial
+
+try:
+  os.remove("/tmp/dump")
+except:
+  pass
+def write_command(port, text):
+  f = open("/tmp/dump", "a+")
+  f.write(text)
+  f.write("\n")
+  f.close()
 
 
 def version():  # Report version number for this document
@@ -43,7 +54,7 @@ def doABMove(port_name, delta_a, delta_b, duration):
     # Then, <Axis1> moves by <AxisA> + <AxisB>, and <Axis2> as <AxisA> - <AxisB>
     if port_name is not None:
         str_output = 'XM,{0},{1},{2}\r'.format(duration, delta_a, delta_b)
-        ebb_serial.command(port_name, str_output)
+        write_command(port_name, str_output)
 
 
 def doTimedPause(port_name, n_pause):
@@ -55,7 +66,7 @@ def doTimedPause(port_name, n_pause):
                 td = n_pause
                 if td < 1:
                     td = 1  # don't allow zero-time moves
-            ebb_serial.command(port_name, 'SM,{0},0,0\r'.format(td))
+            write_command(port_name, 'SM,{0},0,0\r'.format(td))
             n_pause -= td
 
 
@@ -68,7 +79,7 @@ def doLowLevelMove(port_name, ri1, steps1, delta_r1, ri2, steps2, delta_r2):
         if ((ri1 == 0 and delta_r1 == 0) or steps1 == 0) and ((ri2 == 0 and delta_r2 == 0) or steps2 == 0):
             return
         str_output = 'LM,{0},{1},{2},{3},{4},{5}\r'.format(ri1, steps1, delta_r1, ri2, steps2, delta_r2)
-        ebb_serial.command(port_name, str_output)
+        write_command(port_name, str_output)
 
 
 def doXYMove(port_name, delta_x, delta_y, duration):
@@ -77,7 +88,7 @@ def doXYMove(port_name, delta_x, delta_y, duration):
     # On EggBot, Axis 1 is the "pen" motor, and Axis 2 is the "egg" motor.
     if port_name is not None:
         str_output = 'SM,{0},{1},{2}\r'.format(duration,delta_y,delta_x)
-        ebb_serial.command(port_name, str_output)
+        write_command(port_name, str_output)
 
 
 def moveDistLM(rin, delta_rin, time_ticks):
@@ -184,13 +195,14 @@ def QueryPenUp(port_name):
 
 
 def QueryPRGButton(port_name):
+    return '0'
     if port_name is not None:
         return ebb_serial.query(port_name, 'QB\r')
 
 
 def sendDisableMotors(port_name):
     if port_name is not None:
-        ebb_serial.command(port_name, 'EM,0,0\r')
+        write_command(port_name, 'EM,0,0\r')
 
 
 def sendEnableMotors(port_name, res):
@@ -199,7 +211,7 @@ def sendEnableMotors(port_name, res):
     if res > 5:
         res = 5
     if port_name is not None:
-        ebb_serial.command(port_name, 'EM,{0},{0}\r'.format(res))
+        write_command(port_name, 'EM,{0},{0}\r'.format(res))
         # If res == 0, -> Motor disabled
         # If res == 1, -> 16X microstepping
         # If res == 2, -> 8X microstepping
@@ -211,13 +223,13 @@ def sendEnableMotors(port_name, res):
 def sendPenDown(port_name, pen_delay):
     if port_name is not None:
         str_output = 'SP,0,{0}\r'.format(pen_delay)
-        ebb_serial.command(port_name, str_output)
+        write_command(port_name, str_output)
 
 
 def sendPenUp(port_name, pen_delay):
     if port_name is not None:
         str_output = 'SP,1,{0}\r'.format(pen_delay)
-        ebb_serial.command(port_name, str_output)
+        write_command(port_name, str_output)
 
 
 def PBOutConfig(port_name, pin, state):
@@ -230,10 +242,10 @@ def PBOutConfig(port_name, pin, state):
     if port_name is not None:
         # Set initial Bx pin value, high or low:
         str_output = 'PO,B,{0},{1}\r'.format(pin, state)
-        ebb_serial.command(port_name, str_output)
+        write_command(port_name, str_output)
         # Configure I/O pin Bx as an output
         str_output = 'PD,B,{0},0\r'.format(pin)
-        ebb_serial.command(port_name, str_output)
+        write_command(port_name, str_output)
 
 
 def PBOutValue(port_name, pin, state):
@@ -241,38 +253,38 @@ def PBOutValue(port_name, pin, state):
     # Set the pin as an output with OutputPinBConfigure before using this.
     if port_name is not None:
         str_output = 'PO,B,{0},{1}\r'.format(pin, state)
-        ebb_serial.command(port_name, str_output)
+        write_command(port_name, str_output)
 
 
 def TogglePen(port_name):
     if port_name is not None:
-        ebb_serial.command(port_name, 'TP\r')
+        write_command(port_name, 'TP\r')
 
 
 def setPenDownPos(port_name, servo_max):
     if port_name is not None:
-        ebb_serial.command(port_name, 'SC,5,{0}\r'.format(servo_max))
+        write_command(port_name, 'SC,5,{0}\r'.format(servo_max))
         # servo_max may be in the range 1 to 65535, in units of 83 ns intervals. This sets the "Pen Down" position.
         # http://evil-mad.github.io/EggBot/ebb.html#SC
 
 
 def setPenDownRate(port_name, pen_down_rate):
     if port_name is not None:
-        ebb_serial.command(port_name, 'SC,12,{0}\r'.format(pen_down_rate))
+        write_command(port_name, 'SC,12,{0}\r'.format(pen_down_rate))
         # Set the rate of change of the servo when going down.
         # http://evil-mad.github.io/EggBot/ebb.html#SC
 
 
 def setPenUpPos(port_name, servo_min):
     if port_name is not None:
-        ebb_serial.command(port_name, 'SC,4,{0}\r'.format(servo_min))
+        write_command(port_name, 'SC,4,{0}\r'.format(servo_min))
         # servo_min may be in the range 1 to 65535, in units of 83 ns intervals. This sets the "Pen Up" position.
         # http://evil-mad.github.io/EggBot/ebb.html#SC
 
 
 def setPenUpRate(port_name, pen_up_rate):
     if port_name is not None:
-        ebb_serial.command(port_name, 'SC,11,{0}\r'.format(pen_up_rate))
+        write_command(port_name, 'SC,11,{0}\r'.format(pen_up_rate))
         # Set the rate of change of the servo when going up.
         # http://evil-mad.github.io/EggBot/ebb.html#SC
 
@@ -281,7 +293,7 @@ def setEBBLV(port_name, ebb_lv):
     # Set the EBB "Layer" Variable, an 8-bit number we can read and write.
     # (Unrelated to our plot layers; name is an historical artifact.)
     if port_name is not None:
-        ebb_serial.command(port_name, 'SL,{0}\r'.format(ebb_lv))
+        write_command(port_name, 'SL,{0}\r'.format(ebb_lv))
 
 
 def queryEBBLV(port_name):
